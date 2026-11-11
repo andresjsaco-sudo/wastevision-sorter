@@ -1,0 +1,10 @@
+dataset/
+runs/
+node_modules/
+__pycache__/
+*.log
+web/models/_test.onnx
+.DS_Store
+*.pt
+
+subir_a_github.bat

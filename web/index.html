@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WasteVision Sorter</title>
+<meta name="description" content="Simulación de una línea de clasificación de residuos: segmentación de instancias en el navegador, seguimiento sobre la cinta y robots que interceptan cada objeto.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>WasteVision <span>Sorter</span></h1>
+    <p class="sub">Línea de clasificación de residuos simulada: visión por computador, seguimiento y control de robots.</p>
+  </div>
+  <div class="chips">
+    <span class="chip" id="percStatus" data-kind="warn">Cargando...</span>
+    <span class="chip"><b id="kFps">--</b> fps</span>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="scroll"><canvas id="view" aria-label="Vista cenital de la cinta transportadora con los robots clasificadores"></canvas></div>
+    <p class="hint">Vista cenital. La cinta avanza de izquierda a derecha: la cámara observa el tramo punteado y los robots R1 a R3 retiran cada fracción hacia su contenedor. Lo que nadie retira cae al rechazo.</p>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Operación</h2>
+      <label>Percepción
+        <select id="perception"><option value="oracle">Oráculo (verdad del simulador)</option></select>
+      </label>
+      <label class="check"><input type="checkbox" id="gpu"> Usar WebGPU (experimental)</label>
+      <label>Velocidad de la cinta <output id="beltSpeedOut"></output>
+        <input type="range" id="beltSpeed" min="0.10" max="0.80" step="0.01">
+      </label>
+      <label>Carga de residuos <output id="rateOut"></output>
+        <input type="range" id="rate" min="0.5" max="8" step="0.1">
+      </label>
+      <label>Robots por estación
+        <select id="arms"><option value="1">1 (3 robots)</option><option value="2">2 (6 robots)</option></select>
+      </label>
+      <label>Política de asignación
+        <select id="policy">
+          <option value="edf">Plazo más cercano (EDF)</option>
+          <option value="nearest">Objeto más cercano</option>
+          <option value="fifo">Orden de llegada (FIFO)</option>
+        </select>
+      </label>
+      <label>Confianza mínima para recoger <output id="confThrOut"></output>
+        <input type="range" id="confThr" min="0" max="0.95" step="0.01">
+      </label>
+      <label>Fallo de la ventosa <output id="gripFailOut"></output>
+        <input type="range" id="gripFail" min="0" max="0.3" step="0.01">
+      </label>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="showDets" checked> Detecciones</label>
+        <label class="check"><input type="checkbox" id="showTracks" checked> Pistas</label>
+        <label class="check"><input type="checkbox" id="showPlan" checked> Trayectorias</label>
+      </div>
+      <div class="row">
+        <button id="pause">Pausar</button>
+        <button id="reset" class="ghost">Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Desempeño de la línea</h2>
+      <div class="kpis">
+        <div><b id="kRecovery">--</b><span>Recuperación de reciclables</span></div>
+        <div><b id="kPurity">--</b><span>Pureza de los contenedores</span></div>
+        <div><b id="kPpm">--</b><span>Recogidas por minuto</span></div>
+        <div><b id="kMissed">--</b><span>Reciclables perdidos</span></div>
+        <div><b id="kResidue">--</b><span>Rechazo bien descartado</span></div>
+        <div><b id="kAir">--</b><span>Agarres fallidos</span></div>
+        <div><b id="kErr">--</b><span>Error de seguimiento del cabezal</span></div>
+      </div>
+      <h2 class="mt">Percepción frente a la verdad</h2>
+      <div class="kpis small">
+        <div><b id="kRecall">--</b><span>Objetos visibles detectados</span></div>
+        <div><b id="kPrec">--</b><span>Detecciones correctas</span></div>
+        <div><b id="kCls">--</b><span>Clase acertada</span></div>
+        <div><b id="kLat">--</b><span>Latencia y frecuencia</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Por fracción</h2>
+      <table>
+        <thead><tr><th>Fracción</th><th>Uds</th><th>Recuperación</th><th>Pureza</th></tr></thead>
+        <tbody id="fracBody"></tbody>
+      </table>
+      <p class="note"><b>Recuperación:</b> de lo que entró de esa fracción, cuánto terminó en su contenedor. <b>Pureza:</b> de lo que hay en el contenedor, cuánto es de esa fracción. Ambas se miden contra la clase real de cada objeto, que el sistema de visión nunca conoce.</p>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2>Cómo funciona</h2>
+    <ol>
+      <li><b>Cámara.</b> Una cámara cenital virtual captura el tramo punteado de la cinta (640 x 480 px, 2,5 mm por píxel).</li>
+      <li><b>Segmentación de instancias.</b> Una red YOLO-seg se ejecuta en este navegador sobre esa imagen y entrega, por cada residuo, su máscara, su clase y su confianza. En modo oráculo se usa la verdad del simulador como cota superior.</li>
+      <li><b>Seguimiento.</b> Cada detección se asocia a una pista en coordenadas de la cinta. Como la referencia viaja con la cinta, la latencia de la red no desplaza el objetivo, y la clase se decide por votación entre cuadros.</li>
+      <li><b>Asignación y planificación.</b> Cada robot elige un objetivo de sus dos fracciones y calcula dónde estará cuando el cabezal llegue, con un perfil trapezoidal de velocidad.</li>
+      <li><b>Control.</b> Cada eje sigue esa trayectoria con realimentación PD y prealimentación de aceleración. La ventosa cierra sobre lo que realmente haya debajo del cabezal.</li>
+    </ol>
+  </section>
+</main>
+<footer>Universidad del Norte · Control y Agentes Inteligentes · Grupo 3</footer>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"name":"wastevision-sorter","private":true,"type":"module","scripts":{"dev":"node serve.mjs web 5173","experiments":"node experiments/run.mjs"}}

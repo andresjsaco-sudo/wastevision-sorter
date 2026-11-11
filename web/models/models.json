@@ -1,0 +1,26 @@
+{
+  "models": [
+    {
+      "id": "yolo11s-seg",
+      "name": "YOLO11s-seg",
+      "file": "models/wastevision-yolo11s-seg.onnx",
+      "imgsz": [
+        480,
+        640
+      ],
+      "available": true,
+      "default": false
+    },
+    {
+      "id": "yolo11n-seg",
+      "name": "YOLO11n-seg",
+      "file": "models/wastevision-yolo11n-seg.onnx",
+      "imgsz": [
+        480,
+        640
+      ],
+      "available": true,
+      "default": true
+    }
+  ]
+}

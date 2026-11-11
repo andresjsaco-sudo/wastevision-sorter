@@ -1,0 +1,29 @@
+{
+  "classes": ["plastic", "glass", "cardboard", "metal", "paper", "organic", "other"],
+  "px_per_m": 400,
+  "belt_h": 480,
+  "cam_w": 640,
+  "size_px": {
+    "plastic": [70, 130],
+    "glass": [60, 115],
+    "cardboard": [100, 175],
+    "metal": [55, 110],
+    "paper": [80, 150],
+    "organic": [50, 100],
+    "other": [70, 150]
+  },
+  "mix": {
+    "plastic": 0.20,
+    "glass": 0.10,
+    "cardboard": 0.15,
+    "metal": 0.10,
+    "paper": 0.18,
+    "organic": 0.12,
+    "other": 0.15
+  },
+  "y_margin_frac": 0.33,
+  "shadow": {"dx": 5, "dy": 7, "alpha": 0.38, "blur": 4},
+  "min_visible_frac": 0.25,
+  "min_visible_px": 300,
+  "mask_grid": 48
+}
